@@ -148,6 +148,7 @@
             <div v-if="authType === 'register'">
               <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">Nama Lengkap</label>
               <input 
+                v-model="authForm.name"
                 type="text" 
                 placeholder="Masukkan nama Anda" 
                 required
@@ -158,6 +159,7 @@
             <div>
               <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">Email / No. Handphone</label>
               <input 
+                v-model="authForm.email"
                 type="text" 
                 placeholder="gamingpartner@gmail.com" 
                 required
@@ -168,6 +170,7 @@
             <div>
               <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">Password</label>
               <input 
+                v-model="authForm.password"
                 type="password" 
                 placeholder="••••••••" 
                 required
@@ -177,9 +180,10 @@
 
             <button 
               type="submit" 
-              class="w-full py-3.5 bg-gradient-to-r from-neon-purple to-neon-magenta hover:from-neon-magenta hover:to-neon-cyan text-white text-sm font-bold tracking-widest rounded-xl transition-all duration-500 shadow-lg hover:shadow-neon-cyan/20 border border-white/15 uppercase mt-6"
+              :disabled="isLoading"
+              class="w-full py-3.5 bg-gradient-to-r from-neon-purple to-neon-magenta hover:from-neon-magenta hover:to-neon-cyan text-white text-sm font-bold tracking-widest rounded-xl transition-all duration-500 shadow-lg hover:shadow-neon-cyan/20 border border-white/15 uppercase mt-6 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {{ authType === 'login' ? 'Masuk Akun' : 'Daftar Sekarang' }}
+              {{ isLoading ? 'Memproses...' : (authType === 'login' ? 'Masuk Akun' : 'Daftar Sekarang') }}
             </button>
           </form>
 
@@ -201,12 +205,20 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, reactive } from 'vue'
+import axios from 'axios'
 
 const isScrolled = ref(false)
 const isMobileMenuOpen = ref(false)
 const isAuthModalOpen = ref(false)
 const authType = ref('login')
+const isLoading = ref(false)
+
+const authForm = reactive({
+  name: '',
+  email: '',
+  password: ''
+})
 
 const menuItems = [
   { name: 'home', label: 'Home', path: '/' },
@@ -227,9 +239,35 @@ const openAuthModal = (type) => {
   isAuthModalOpen.value = true
 }
 
-const handleAuthSubmit = () => {
-  alert(`${authType.value === 'login' ? 'Login' : 'Pendaftaran'} berhasil! Selamat datang di JohenGaming.`)
-  isAuthModalOpen.value = false
+const handleAuthSubmit = async () => {
+  isLoading.value = true
+  try {
+    if (authType.value === 'login') {
+      await axios.post('/login', {
+        email: authForm.email,
+        password: authForm.password
+      })
+      alert('Login berhasil! Selamat datang di JohenGaming.')
+    } else {
+      await axios.post('/register', {
+        name: authForm.name,
+        email: authForm.email,
+        password: authForm.password
+      })
+      alert('Pendaftaran berhasil! Selamat datang di JohenGaming.')
+    }
+    isAuthModalOpen.value = false
+    window.location.reload()
+  } catch (error) {
+    if (error.response?.data?.errors) {
+      const firstError = Object.values(error.response.data.errors)[0][0]
+      alert('Gagal: ' + firstError)
+    } else {
+      alert('Terjadi kesalahan: ' + (error.response?.data?.message || error.message))
+    }
+  } finally {
+    isLoading.value = false
+  }
 }
 
 onMounted(() => {
